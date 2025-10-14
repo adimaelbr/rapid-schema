@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { ProjectCard } from "@/components/ProjectCard";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useNavigate } from "react-router-dom";
 
 interface Project {
@@ -19,6 +20,11 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; projectId: string; projectName: string }>({
+    open: false,
+    projectId: "",
+    projectName: "",
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -85,8 +91,8 @@ const Dashboard = () => {
     setLoading(false);
   };
 
-  const handleDeleteProject = async (id: string) => {
-    const { error } = await supabase.from("projects").delete().eq("id", id);
+  const handleDeleteProject = async () => {
+    const { error } = await supabase.from("projects").delete().eq("id", deleteDialog.projectId);
 
     if (error) {
       toast({
@@ -97,10 +103,11 @@ const Dashboard = () => {
     } else {
       toast({
         title: "Projeto deletado",
-        description: "O projeto foi removido com sucesso.",
+        description: "O projeto e todos os seus dados foram removidos com sucesso.",
       });
       fetchProjects();
     }
+    setDeleteDialog({ open: false, projectId: "", projectName: "" });
   };
 
   const handleSignOut = async () => {
@@ -149,12 +156,21 @@ const Dashboard = () => {
                 description={project.description || undefined}
                 createdAt={project.created_at}
                 onSelect={() => navigate(`/project/${project.id}`)}
-                onDelete={() => handleDeleteProject(project.id)}
+                onDelete={() => setDeleteDialog({ open: true, projectId: project.id, projectName: project.name })}
               />
             ))}
           </div>
         )}
       </main>
+
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        onConfirm={handleDeleteProject}
+        title="Tem certeza que deseja deletar este projeto?"
+        description="Esta ação irá deletar permanentemente o projeto e TODOS os seus dados associados, incluindo bancos de dados, tabelas, colunas, relacionamentos e rotas de API."
+        itemName={deleteDialog.projectName}
+      />
     </div>
   );
 };

@@ -3,8 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Database as DatabaseIcon, Table } from "lucide-react";
+import { ArrowLeft, Plus, Database as DatabaseIcon, Table, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,16 @@ const ProjectView = () => {
   const [openDbDialog, setOpenDbDialog] = useState(false);
   const [openTableDialog, setOpenTableDialog] = useState(false);
   const [refreshRoutes, setRefreshRoutes] = useState(0);
+  const [deleteDbDialog, setDeleteDbDialog] = useState<{ open: boolean; dbId: string; dbName: string }>({
+    open: false,
+    dbId: "",
+    dbName: "",
+  });
+  const [deleteTableDialog, setDeleteTableDialog] = useState<{ open: boolean; tableId: string; tableName: string }>({
+    open: false,
+    tableId: "",
+    tableName: "",
+  });
 
   useEffect(() => {
     if (projectId) {
@@ -168,6 +179,47 @@ const ProjectView = () => {
     setLoading(false);
   };
 
+  const handleDeleteDatabase = async () => {
+    const { error } = await supabase.from("databases").delete().eq("id", deleteDbDialog.dbId);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao deletar database",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Database deletado",
+        description: "O database e todas as suas tabelas foram removidos com sucesso.",
+      });
+      if (selectedDb === deleteDbDialog.dbId) {
+        setSelectedDb(null);
+      }
+      fetchDatabases();
+    }
+    setDeleteDbDialog({ open: false, dbId: "", dbName: "" });
+  };
+
+  const handleDeleteTable = async () => {
+    const { error } = await supabase.from("db_tables").delete().eq("id", deleteTableDialog.tableId);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao deletar tabela",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Tabela deletada",
+        description: "A tabela foi removida com sucesso.",
+      });
+      fetchTables();
+    }
+    setDeleteTableDialog({ open: false, tableId: "", tableName: "" });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -233,15 +285,27 @@ const ProjectView = () => {
                 <p className="text-sm text-muted-foreground">Nenhum database criado</p>
               ) : (
                 databases.map((db) => (
-                  <Button
-                    key={db.id}
-                    variant={selectedDb === db.id ? "default" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => setSelectedDb(db.id)}
-                  >
-                    <DatabaseIcon className="w-4 h-4 mr-2" />
-                    {db.name}
-                  </Button>
+                  <div key={db.id} className="flex items-center gap-1">
+                    <Button
+                      variant={selectedDb === db.id ? "default" : "ghost"}
+                      className="flex-1 justify-start"
+                      onClick={() => setSelectedDb(db.id)}
+                    >
+                      <DatabaseIcon className="w-4 h-4 mr-2" />
+                      {db.name}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteDbDialog({ open: true, dbId: db.id, dbName: db.name });
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ))
               )}
             </CardContent>
@@ -301,13 +365,26 @@ const ProjectView = () => {
                   {tables.map((table) => (
                     <Card
                       key={table.id}
-                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                      className="cursor-pointer hover:border-primary/50 transition-colors group"
                       onClick={() => navigate(`/table/${table.id}`)}
                     >
                       <CardHeader>
-                        <div className="flex items-center gap-2">
-                          <Table className="w-5 h-5 text-primary" />
-                          <CardTitle className="text-lg">{table.name}</CardTitle>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Table className="w-5 h-5 text-primary" />
+                            <CardTitle className="text-lg">{table.name}</CardTitle>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTableDialog({ open: true, tableId: table.id, tableName: table.name });
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </CardHeader>
                     </Card>
@@ -339,6 +416,24 @@ const ProjectView = () => {
         </TabsContent>
       </Tabs>
     </main>
+
+    <DeleteConfirmDialog
+      open={deleteDbDialog.open}
+      onOpenChange={(open) => setDeleteDbDialog({ ...deleteDbDialog, open })}
+      onConfirm={handleDeleteDatabase}
+      title="Tem certeza que deseja deletar este banco de dados?"
+      description="Esta ação irá deletar permanentemente o banco de dados e TODAS as suas tabelas, colunas, relacionamentos e rotas de API associadas."
+      itemName={deleteDbDialog.dbName}
+    />
+
+    <DeleteConfirmDialog
+      open={deleteTableDialog.open}
+      onOpenChange={(open) => setDeleteTableDialog({ ...deleteTableDialog, open })}
+      onConfirm={handleDeleteTable}
+      title="Tem certeza que deseja deletar esta tabela?"
+      description="Esta ação irá deletar permanentemente a tabela e TODAS as suas colunas, relacionamentos e rotas de API associadas."
+      itemName={deleteTableDialog.tableName}
+    />
     </div>
   );
 };

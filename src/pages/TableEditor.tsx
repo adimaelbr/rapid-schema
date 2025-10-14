@@ -12,6 +12,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SQLPreview } from "@/components/SQLPreview";
 import { RelationshipManager } from "@/components/RelationshipManager";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface Column {
   id?: string;
@@ -50,6 +51,7 @@ const TableEditor = () => {
   const [databaseId, setDatabaseId] = useState("");
   const [columns, setColumns] = useState<Column[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (tableId) {
@@ -162,14 +164,43 @@ const TableEditor = () => {
     setLoading(false);
   };
 
+  const handleDeleteTable = async () => {
+    const { error } = await supabase.from("db_tables").delete().eq("id", tableId);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao deletar tabela",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Tabela deletada",
+        description: "A tabela foi removida com sucesso.",
+      });
+      navigate(-1);
+    }
+    setDeleteDialog(false);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setDeleteDialog(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Deletar Tabela
+            </Button>
+          </div>
           <h1 className="text-2xl font-bold">Editor de Tabela: {tableName}</h1>
         </div>
       </header>
@@ -330,6 +361,15 @@ const TableEditor = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <DeleteConfirmDialog
+        open={deleteDialog}
+        onOpenChange={setDeleteDialog}
+        onConfirm={handleDeleteTable}
+        title="Tem certeza que deseja deletar esta tabela?"
+        description="Esta ação irá deletar permanentemente a tabela e TODAS as suas colunas, relacionamentos e rotas de API associadas."
+        itemName={tableName}
+      />
     </div>
   );
 };
