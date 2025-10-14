@@ -80,7 +80,7 @@ export const CreateAPIRouteDialog = ({ projectId, databases, onRouteCreated }: C
       database_id: databaseId,
       table_id: tableId,
       is_private: isPrivate,
-      access_password: isPrivate ? password : null,
+      password_hash: isPrivate ? password : null,
     });
 
     if (error) {
