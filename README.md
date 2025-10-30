@@ -17,6 +17,18 @@ O projeto foi construído com as seguintes tecnologias:
 
 ---
 
+## ⚙️ Configuração do Ambiente (.env)
+
+Antes de rodar o projeto, é necessário criar um arquivo chamado **`.env`** na raiz do projeto.  
+Esse arquivo contém as variáveis de ambiente utilizadas para conectar o projeto ao Supabase.
+
+Crie o arquivo `.env` com o seguinte conteúdo:
+
+```bash
+VITE_SUPABASE_PROJECT_ID=""
+VITE_SUPABASE_PUBLISHABLE_KEY=""
+VITE_SUPABASE_URL=""
+
 ## 🛠️ Como Executar o Projeto Localmente
 
 Siga os passos abaixo para rodar o **Rapid Schema** em seu ambiente local:
